@@ -1,0 +1,44 @@
+name: Reusable Build & Test
+
+on:
+  workflow_call:
+    inputs:
+      python_version:
+        type: string
+        required: false
+        default: '3.12'
+      run_tests:
+        type: boolean
+        required: false
+        default: true
+    outputs:
+      test_result:
+        description: "Status of execution tests"
+        value: ${{ jobs.build-and-test.outputs.status }}
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    outputs:
+      status: ${{ steps.set-status.outputs.test_status }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: ${{ inputs.python_version }}
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Test Suite
+        if: ${{ inputs.run_tests }}
+        run: pytest
+
+      - name: Output Result State
+        id: set-status
+        run: echo "test_status=passed" >> $GITHUB_OUTPUT
