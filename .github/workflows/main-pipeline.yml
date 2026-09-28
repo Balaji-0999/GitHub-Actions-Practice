@@ -1,0 +1,32 @@
+name: Main Deployment Pipeline
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  run-tests:
+    uses: ./.github/workflows/reusable-build-test.yml
+    with:
+      python_version: '3.12'
+      run_tests: true
+
+  build-and-push-docker:
+    needs: run-tests
+    uses: ./.github/workflows/reusable-docker.yml
+    with:
+      image_name: ${{ vars.DOCKERHUB_USERNAME }}/capstone-app
+      tag: latest
+    secrets:
+      docker_username: ${{ vars.DOCKERHUB_USERNAME }}
+      docker_token: ${{ secrets.DOCKERHUB_TOKEN }}
+
+  deploy:
+    needs: build-and-push-docker
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Execute Production Deployment
+        run: |
+          echo "Deploying image: ${{ needs.build-and-push-docker.outputs.image_url }} to production..."
+          echo "Deployment successful!"

@@ -1,0 +1,39 @@
+name: Scheduled Health Check
+
+on:
+  schedule:
+    - cron: '0 */12 * * *'
+  workflow_dispatch:
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run Container from Docker Hub
+        run: |
+          docker run -d -p 5000:5000 --name test-container ${{ secrets.DOCKER_USERNAME }}/capstone-app:latest
+          sleep 5
+
+      - name: Endpoint Health Verification
+        run: |
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/)
+          if [ "$HTTP_STATUS" -eq 200 ]; then
+            echo "CHECK_STATUS=PASSED" >> $GITHUB_ENV
+          else
+            echo "CHECK_STATUS=FAILED" >> $GITHUB_ENV
+            exit 1
+          fi
+
+      - name: Cleanup Container
+        if: always()
+        run: |
+          docker stop test-container || true
+          docker rm test-container || true
+
+      - name: Generate Markdown Summary
+        if: always()
+        run: |
+          echo "## Health Check Report" >> $GITHUB_STEP_SUMMARY
+          echo "- **Target Image:** \`${{ vars.DOCKERHUB_USERNAME }}/capstone-app:latest\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Audit Result:** \`${{ env.CHECK_STATUS }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Execution Time:** $(date -u)" >> $GITHUB_STEP_SUMMARY
