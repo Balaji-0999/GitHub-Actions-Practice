@@ -9,11 +9,23 @@ jobs:
   health-check:
     runs-on: ubuntu-latest
     steps:
-      - name: Run Container from Docker Hub
+      # 1. Private repository se image pull karne ke liye Docker Hub login
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # 2. Private Image pull aur container run
+      - name: Pull and Run Private Container
         run: |
-          docker run -d -p 5000:5000 --name test-container ${{ vars.DOCKERHUB_USERNAME }}/capstone-app:latest
+          IMAGE_NAME="${{ vars.DOCKERHUB_USERNAME }}/capstone-app:latest"
+          echo "Pulling image: $IMAGE_NAME"
+          docker pull $IMAGE_NAME
+          docker run -d -p 5000:5000 --name test-container $IMAGE_NAME
           sleep 5
 
+      # 3. Health check verification
       - name: Endpoint Health Verification
         run: |
           HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/)
@@ -24,16 +36,18 @@ jobs:
             exit 1
           fi
 
+      # 4. Container cleanup
       - name: Cleanup Container
         if: always()
         run: |
           docker stop test-container || true
           docker rm test-container || true
 
+      # 5. Summary report generation
       - name: Generate Markdown Summary
         if: always()
         run: |
           echo "## Health Check Report" >> $GITHUB_STEP_SUMMARY
-          echo "- **Target Image:** \`${{ vars.DOCKERHUB_USERNAME }}/capstone-app:latest\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Target Image:** \`${{ vars.DOCKERHUB_USERNAME }}/capstone-app:latest (Private)\`" >> $GITHUB_STEP_SUMMARY
           echo "- **Audit Result:** \`${{ env.CHECK_STATUS }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- **Execution Time:** $(date -u)" >> $GITHUB_STEP_SUMMARY
