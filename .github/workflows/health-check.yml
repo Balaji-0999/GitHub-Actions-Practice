@@ -11,7 +11,7 @@ jobs:
     steps:
       - name: Run Container from Docker Hub
         run: |
-          docker run -d -p 5000:5000 --name test-container ${{ secrets.DOCKER_USERNAME }}/capstone-app:latest
+          docker run -d -p 5000:5000 --name test-container ${{ vars.DOCKERHUB_USERNAME }}/capstone-app:latest
           sleep 5
 
       - name: Endpoint Health Verification
